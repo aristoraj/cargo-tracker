@@ -2,59 +2,102 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cargo Scanner Widget — Prototype</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
-  body { font-family: Arial, sans-serif; margin: 0; padding: 16px; background: #f5f5f5; }
-  h1 { font-size: 18px; margin-bottom: 4px; }
-  #mode-banner { padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
-  #mode-banner.mock { background: #fff3cd; color: #664d03; border: 1px solid #ffe69c; }
-  #mode-banner.live { background: #d1e7dd; color: #0f5132; border: 1px solid #a3cfbb; }
-  #reader { width: 100%; max-width: 420px; }
-  #last-scan { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 12px 0; max-width: 420px; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: Arial, sans-serif; background: #0b0b0b; color: #eee;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; background: #000; flex: 0 0 auto;
+  }
+  #topbar h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  #summary-toggle {
+    padding: 8px 16px; font-size: 13px; font-weight: bold; border: none;
+    border-radius: 6px; background: #2563eb; color: #fff;
+  }
+  #mode-banner { padding: 5px 14px; font-size: 11px; flex: 0 0 auto; }
+  #mode-banner.mock { background: #4a3b00; color: #ffe69c; }
+  #mode-banner.live { background: #123524; color: #a3cfbb; }
+
+  #camera-wrap { position: relative; flex: 1 1 auto; min-height: 0; background: #000; }
+  #reader { width: 100%; height: 100%; }
+  #reader video { width: 100% !important; height: 100% !important; object-fit: cover; }
+
+  #scan-status {
+    flex: 0 0 auto; font-size: 15px; font-weight: bold; text-align: center;
+    padding: 16px 12px; transition: background 0.25s ease;
+  }
+  #scan-status.scanning { background: #123a5c; color: #bcdcff; }
+  #scan-status.processing { background: #5c4b06; color: #ffe69c; }
+  #scan-status.done { background: #123524; color: #a3cfbb; }
+  #scan-status.error { background: #5c1420; color: #ffb3bd; }
+  #scan-status.hint { background: #5c3200; color: #ffd2a3; }
+
+  #backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 15; display: none; }
+  #backdrop.open { display: block; }
+
+  #summary-drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 100%; max-width: 480px;
+    background: #fff; color: #111; transform: translateX(100%);
+    transition: transform 0.25s ease; overflow-y: auto; padding: 16px; z-index: 20;
+  }
+  #summary-drawer.open { transform: translateX(0); }
+  #summary-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  #summary-header button { padding: 6px 14px; border: none; border-radius: 6px; background: #eee; cursor: pointer; }
+  #progress { font-size: 13px; color: #333; margin-bottom: 10px; }
+
+  #last-scan { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
   #last-scan.flash { animation: flash 0.4s ease; }
-  @keyframes flash { 0% { background:#c8f7c5; } 100% { background:#fff; } }
+  @keyframes flash { 0% { background:#c8f7c5; } 100% { background:#f5f5f5; } }
   #last-scan .field { font-size: 13px; margin: 2px 0; }
   #last-scan .field b { display: inline-block; width: 90px; }
-  table { border-collapse: collapse; width: 100%; max-width: 900px; margin-top: 12px; background: #fff; }
+
+  table { border-collapse: collapse; width: 100%; }
   th, td { border: 1px solid #ddd; padding: 6px 8px; font-size: 12px; text-align: left; }
   th { background: #333; color: #fff; }
   tr.duplicate { background: #f8d7da; }
-  #progress { font-size: 13px; margin-top: 8px; color: #333; }
-  #scan-status {
-    font-size: 16px; font-weight: bold; text-align: center;
-    padding: 14px; border-radius: 8px; margin: 12px 0; max-width: 420px;
-    transition: background 0.25s ease;
-  }
-  #scan-status.scanning { background: #e7f1ff; color: #084298; }
-  #scan-status.processing { background: #fff3cd; color: #664d03; }
-  #scan-status.done { background: #d1e7dd; color: #0f5132; }
-  #scan-status.error { background: #f8d7da; color: #842029; }
-  #scan-status.hint { background: #ffe5d0; color: #7a3e00; }
 </style>
 </head>
 <body>
 
-<h1>Cargo Scanner — Prototype Widget</h1>
+<div id="topbar">
+  <h1>Cargo Scanner</h1>
+  <button id="summary-toggle">Summary</button>
+</div>
 <div id="mode-banner"></div>
 
-<div id="reader"></div>
-<div id="scan-status" class="scanning">Scanning — hold a barcode in view</div>
-<div id="progress"></div>
-
-<div id="last-scan">
-  <div class="field"><b>AWB</b><span id="f-awb">—</span></div>
-  <div class="field"><b>Piece</b><span id="f-piece">—</span></div>
-  <div class="field"><b>Destination</b><span id="f-dest">—</span></div>
-  <div class="field"><b>Ref</b><span id="f-ref">—</span></div>
+<div id="camera-wrap">
+  <div id="reader"></div>
 </div>
 
-<table>
-  <thead>
-    <tr><th>#</th><th>AWB</th><th>Piece</th><th>Destination</th><th>Ref</th><th>Image</th><th>Scanned At</th><th>Record Status</th><th>Image Status</th></tr>
-  </thead>
-  <tbody id="log-body"></tbody>
-</table>
+<div id="scan-status" class="scanning">Scanning — hold a barcode in view</div>
+
+<div id="backdrop"></div>
+<div id="summary-drawer">
+  <div id="summary-header">
+    <strong>Scan Summary</strong>
+    <button id="summary-close">Close</button>
+  </div>
+  <div id="progress"></div>
+  <div id="last-scan">
+    <div class="field"><b>AWB</b><span id="f-awb">—</span></div>
+    <div class="field"><b>Piece</b><span id="f-piece">—</span></div>
+    <div class="field"><b>Destination</b><span id="f-dest">—</span></div>
+    <div class="field"><b>Ref</b><span id="f-ref">—</span></div>
+  </div>
+  <table>
+    <thead>
+      <tr><th>#</th><th>AWB</th><th>Piece</th><th>Dest</th><th>Ref</th><th>Img</th><th>Time</th><th>Record</th><th>Image</th></tr>
+    </thead>
+    <tbody id="log-body"></tbody>
+  </table>
+</div>
 
 <script>
 // ---------------------------------------------------------------------
@@ -113,6 +156,22 @@ setInterval(() => {
     setScanStatus('scanning', 'Scanning — hold a barcode in view');
   }
 }, 3000);
+
+// ---------------------------------------------------------------------
+// Summary drawer — keeps the camera as the primary, full-screen surface;
+// the table/details only show up when explicitly asked for.
+// ---------------------------------------------------------------------
+function openSummary() {
+  document.getElementById('summary-drawer').classList.add('open');
+  document.getElementById('backdrop').classList.add('open');
+}
+function closeSummary() {
+  document.getElementById('summary-drawer').classList.remove('open');
+  document.getElementById('backdrop').classList.remove('open');
+}
+document.getElementById('summary-toggle').addEventListener('click', openSummary);
+document.getElementById('summary-close').addEventListener('click', closeSummary);
+document.getElementById('backdrop').addEventListener('click', closeSummary);
 
 function parsePayload(raw) {
   // Expected: AWB:xxx|PC:n/total|DEST:xxx|REF:xxx
@@ -304,11 +363,26 @@ async function onDecoded(raw) {
     { facingMode: 'environment' },
     {
       fps: 10,
-      qrbox: { width: 300, height: 120 },
+      // Responsive scan box: sized from the ACTUAL rendered viewfinder
+      // dimensions every time, instead of a fixed pixel box that stops
+      // matching reality the moment screen size or zoom changes.
+      qrbox: (viewfinderWidth, viewfinderHeight) => ({
+        width: Math.floor(viewfinderWidth * 0.85),
+        height: Math.floor(viewfinderHeight * 0.35),
+      }),
+      videoConstraints: {
+        facingMode: 'environment',
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
       formatsToSupport: [
         Html5QrcodeSupportedFormats.CODE_128,
         Html5QrcodeSupportedFormats.QR_CODE,
       ],
+      // Prefer the browser's native barcode detector when available
+      // (Chrome/Android) — generally more reliable on 1D barcodes than
+      // the pure-JS fallback decoder.
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
     },
     (decodedText) => onDecoded(decodedText),
     () => { /* per-frame decode failure, expected while no barcode in view — ignore */ }
