@@ -127,7 +127,7 @@ app.patch('/api/scan-events/:id/image', upload.single('file'), async (req, res) 
     const form = new FormData();
     form.append('file', new Blob([req.file.buffer], { type: req.file.mimetype }), req.file.originalname || `scan-${id}.jpg`);
 
-    const url = `https://${ZOHO_API_DOMAIN}/creator/v2.1/data/${ZOHO_ACCOUNT_OWNER_NAME}/${ZOHO_APP_LINK_NAME}/form/${ZOHO_FORM_LINK_NAME}/record/${id}/${ZOHO_IMAGE_FIELD}/upload`;
+    const url = `https://${ZOHO_API_DOMAIN}/creator/v2.1/data/${ZOHO_ACCOUNT_OWNER_NAME}/${ZOHO_APP_LINK_NAME}/report/${ZOHO_REPORT_LINK_NAME}/${id}/${ZOHO_IMAGE_FIELD}/upload`;
     const zohoResp = await fetch(url, {
       method: ZOHO_UPLOAD_METHOD,
       headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
