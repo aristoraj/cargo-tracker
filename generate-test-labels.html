@@ -5,22 +5,52 @@
 <title>Test Label Generator — Cargo Prototype</title>
 <script src="https://cdn.jsdelivr.net/npm/bwip-js@4/dist/bwip-js-min.js"></script>
 <style>
-  body { font-family: Arial, sans-serif; background: #eee; margin: 0; padding: 20px; }
+  body { font-family: Arial, sans-serif; background: #ddd; margin: 0; padding: 20px; }
   .controls { background: #fff; padding: 16px; border-radius: 8px; margin-bottom: 20px; max-width: 700px; }
   .controls label { display: block; margin-top: 8px; font-size: 13px; color: #333; }
   .controls input { width: 100%; padding: 6px; box-sizing: border-box; font-size: 14px; }
   .controls button { margin-top: 14px; padding: 10px 18px; font-size: 14px; cursor: pointer; }
-  #labels { display: flex; flex-wrap: wrap; gap: 16px; }
+  #labels { display: flex; flex-wrap: wrap; gap: 20px; }
+
   .label {
-    width: 340px; background: #fff; border: 2px solid #000; padding: 10px;
-    font-family: Arial, sans-serif;
+    width: 336px; min-height: 528px; background: #fff; border: 2px solid #000;
+    padding: 10px; font-family: Arial, sans-serif; display: flex; flex-direction: column; gap: 7px;
   }
-  .label .brand { font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; }
-  .label .dest { font-size: 26px; font-weight: bold; margin: 6px 0; }
-  .label .row { font-size: 11px; color: #222; margin: 2px 0; }
-  .label canvas { width: 100%; margin-top: 6px; }
-  .label .piece { font-size: 16px; font-weight: bold; text-align: right; }
-  @media print { .controls, h1 { display: none; } }
+  .label .header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    border-bottom: 2px solid #000; padding-bottom: 6px;
+  }
+  .label .header .service { font-weight: bold; font-size: 13px; line-height: 1.2; max-width: 55%; }
+  .label .header .badges { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .label .header .wpx-badge { border: 2px solid #000; padding: 1px 10px; font-weight: bold; font-size: 14px; }
+  .label .header .dhl-logo {
+    background: #ffcc00; color: #d40511; font-weight: 900; font-style: italic;
+    font-size: 17px; padding: 2px 6px; letter-spacing: 1px;
+  }
+
+  .label .addr-row { display: flex; gap: 8px; font-size: 9.5px; line-height: 1.35; border-bottom: 1px solid #999; padding-bottom: 6px; }
+  .label .addr-row .col { flex: 1; }
+  .label .addr-row .col b { display: block; font-size: 10px; }
+
+  .label .dest-bar {
+    background: #000; color: #fff; padding: 8px 10px; display: flex; align-items: center; gap: 10px;
+  }
+  .label .dest-bar .c-badge { border: 2px solid #fff; padding: 1px 7px; font-size: 15px; font-weight: bold; }
+  .label .dest-bar .dest-code { font-size: 30px; font-weight: 900; letter-spacing: 1px; flex: 1; }
+
+  .label .country-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+  .label .country-row .country { font-weight: bold; font-size: 14px; }
+
+  .label .consignee { font-size: 12px; font-weight: bold; line-height: 1.4; border-bottom: 1px solid #999; padding-bottom: 6px; }
+
+  .label .weight-row { display: flex; justify-content: space-between; font-size: 10px; }
+  .label .weight-row .piece-count { font-size: 22px; font-weight: 900; }
+
+  .label .barcode-block { margin-top: auto; }
+  .label .barcode-block .ref-line { font-size: 10px; text-align: center; margin-top: 2px; }
+  .label canvas { width: 100%; }
+
+  @media print { .controls, h1 { display: none; } #labels { gap: 0; } .label { break-after: page; } }
 </style>
 </head>
 <body>
@@ -28,7 +58,7 @@
 <h1>Test Label Generator (Cargo Prototype)</h1>
 
 <div class="controls">
-  <label>AWB / Tracking No
+  <label>AWB / Waybill No
     <input id="awb" value="4062665515">
   </label>
   <label>Destination code (e.g. IN-COK-EKM)
@@ -36,6 +66,12 @@
   </label>
   <label>Ref / cargo doc no
     <input id="ref" value="AFY24-0183">
+  </label>
+  <label>Consignee name / address
+    <input id="consignee" value="ERNAKULAM 682314&#10;MULATHURUTHY">
+  </label>
+  <label>Weight (e.g. 4.5/40.5 Kg)
+    <input id="weight" value="4.5/40.5 Kg">
   </label>
   <label>Total pieces
     <input id="total" type="number" value="9" min="1" max="50">
@@ -58,6 +94,8 @@ function generate() {
   const awb = document.getElementById('awb').value.trim();
   const dest = document.getElementById('dest').value.trim();
   const ref = document.getElementById('ref').value.trim();
+  const consignee = document.getElementById('consignee').value.trim();
+  const weight = document.getElementById('weight').value.trim();
   const total = parseInt(document.getElementById('total').value, 10);
 
   const container = document.getElementById('labels');
@@ -69,19 +107,47 @@ function generate() {
     const div = document.createElement('div');
     div.className = 'label';
     div.innerHTML = `
-      <div class="brand"><span>EXPRESS WORLDWIDE</span><span>WPX</span></div>
-      <div class="dest">${dest}</div>
-      <div class="row">AWB: ${awb}</div>
-      <div class="row">Ref: ${ref}</div>
-      <canvas id="bc-${piece}"></canvas>
-      <div class="piece">${piece} / ${total}</div>
+      <div class="header">
+        <div class="service">EXPRESS<br>WORLDWIDE</div>
+        <div class="badges">
+          <div class="wpx-badge">WPX</div>
+          <div class="dhl-logo">DHL</div>
+        </div>
+      </div>
+
+      <div class="addr-row">
+        <div class="col"><b>From</b>Cargo Origin Facility<br>Origin: PVG</div>
+        <div class="col"><b>To</b>FCI OEN Connectors Ltd<br>Destination Zone</div>
+      </div>
+
+      <div class="dest-bar">
+        <div class="c-badge">C</div>
+        <div class="dest-code">${dest}</div>
+      </div>
+
+      <div class="country-row">
+        <span>India</span>
+        <span class="country">L</span>
+      </div>
+
+      <div class="consignee">${consignee.replace(/\n/g, '<br>')}</div>
+
+      <div class="weight-row">
+        <span>${weight}</span>
+        <span class="piece-count">${piece} / ${total}</span>
+      </div>
+
+      <div class="barcode-block">
+        <canvas id="bc-${piece}"></canvas>
+        <div class="ref-line">Ref: ${ref}</div>
+      </div>
     `;
     container.appendChild(div);
 
     bwipjs.toCanvas(`bc-${piece}`, {
       bcid: 'code128',
       text: payload,
-      scale: 3,
+      scale: 2.6,
       height: 12,
       includetext: true,
       textxalign: 'center',
