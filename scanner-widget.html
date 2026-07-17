@@ -24,6 +24,10 @@
   #mode-banner { padding: 5px 14px; font-size: 11px; flex: 0 0 auto; }
   #mode-banner.mock { background: #4a3b00; color: #ffe69c; }
   #mode-banner.live { background: #123524; color: #a3cfbb; }
+  #debug-line {
+    flex: 0 0 auto; font-family: monospace; font-size: 10px; color: #7fd; background: #000;
+    padding: 3px 14px; white-space: nowrap; overflow-x: auto;
+  }
 
   #camera-wrap { position: relative; flex: 1 1 auto; min-height: 0; background: #000; }
   #reader { width: 100%; height: 100%; }
@@ -71,6 +75,7 @@
   <button id="summary-toggle">Summary</button>
 </div>
 <div id="mode-banner"></div>
+<div id="debug-line">starting camera…</div>
 
 <div id="camera-wrap">
   <div id="reader"></div>
@@ -355,6 +360,22 @@ async function onDecoded(raw) {
   scheduleRevertToScanning();
 }
 
+// ---------------------------------------------------------------------
+// Live diagnostics — so a failed scan attempt shows real data (actual
+// camera resolution, how many decode attempts have run and failed,
+// last error text) instead of us guessing blind at what's wrong.
+// ---------------------------------------------------------------------
+let decodeAttempts = 0;
+let lastDecodeError = '';
+
+function updateDebugLine() {
+  const video = document.querySelector('#reader video');
+  const res = video && video.videoWidth ? `${video.videoWidth}x${video.videoHeight}` : 'no video yet';
+  document.getElementById('debug-line').textContent =
+    `cam: ${res} | decode attempts: ${decodeAttempts} | last error: ${lastDecodeError || '—'}`;
+}
+setInterval(updateDebugLine, 1000);
+
 (async () => {
   setModeBanner();
 
@@ -375,16 +396,20 @@ async function onDecoded(raw) {
         Html5QrcodeSupportedFormats.CODE_128,
         Html5QrcodeSupportedFormats.QR_CODE,
       ],
-      // Prefer the browser's native barcode detector when available
-      // (Chrome/Android) — generally more reliable on 1D barcodes than
-      // the pure-JS fallback decoder.
-      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+      // Deliberately NOT using experimentalFeatures.useBarCodeDetectorIfSupported
+      // here — that flag's real-world behavior on this library version wasn't
+      // something I could verify, so it's removed as an unproven variable
+      // rather than left in as a guess.
     },
     (decodedText) => onDecoded(decodedText),
-    () => { /* per-frame decode failure, expected while no barcode in view — ignore */ }
+    (errorMessage) => {
+      decodeAttempts++;
+      lastDecodeError = String(errorMessage).slice(0, 60);
+    }
   ).catch(err => {
     document.getElementById('reader').textContent =
       'Camera unavailable: ' + err + ' (try over https:// or localhost, and grant camera permission).';
+    document.getElementById('debug-line').textContent = 'scanner.start() failed: ' + err;
   });
 })();
 </script>
