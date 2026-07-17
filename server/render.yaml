@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: cargo-tracker-api
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: ZOHO_CLIENT_ID
+        sync: false
+      - key: ZOHO_CLIENT_SECRET
+        sync: false
+      - key: ZOHO_REFRESH_TOKEN
+        sync: false
+      - key: ZOHO_ACCOUNT_OWNER_NAME
+        sync: false
+      - key: ZOHO_ACCOUNTS_DOMAIN
+        value: accounts.zoho.in
+      - key: ZOHO_API_DOMAIN
+        value: www.zohoapis.in
+      - key: ZOHO_APP_LINK_NAME
+        value: Cargo_Tracker
+      - key: ZOHO_FORM_LINK_NAME
+        value: Scan_Event
+      - key: ZOHO_REPORT_LINK_NAME
+        value: All_Scan_Events
+      - key: ZOHO_IMAGE_FIELD
+        value: Scanned_Image
+      - key: ZOHO_UPLOAD_METHOD
+        value: POST
+      - key: ALLOWED_ORIGIN
+        value: "*"

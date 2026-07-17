@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cargo Scanner Widget — Prototype</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; padding: 16px; background: #f5f5f5; }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  #mode-banner { padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
+  #mode-banner.mock { background: #fff3cd; color: #664d03; border: 1px solid #ffe69c; }
+  #mode-banner.live { background: #d1e7dd; color: #0f5132; border: 1px solid #a3cfbb; }
+  #reader { width: 100%; max-width: 420px; }
+  #last-scan { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 12px 0; max-width: 420px; }
+  #last-scan.flash { animation: flash 0.4s ease; }
+  @keyframes flash { 0% { background:#c8f7c5; } 100% { background:#fff; } }
+  #last-scan .field { font-size: 13px; margin: 2px 0; }
+  #last-scan .field b { display: inline-block; width: 90px; }
+  table { border-collapse: collapse; width: 100%; max-width: 900px; margin-top: 12px; background: #fff; }
+  th, td { border: 1px solid #ddd; padding: 6px 8px; font-size: 12px; text-align: left; }
+  th { background: #333; color: #fff; }
+  tr.duplicate { background: #f8d7da; }
+  #progress { font-size: 13px; margin-top: 8px; color: #333; }
+</style>
+</head>
+<body>
+
+<h1>Cargo Scanner — Prototype Widget</h1>
+<div id="mode-banner"></div>
+
+<div id="reader"></div>
+<div id="progress"></div>
+
+<div id="last-scan">
+  <div class="field"><b>AWB</b><span id="f-awb">—</span></div>
+  <div class="field"><b>Piece</b><span id="f-piece">—</span></div>
+  <div class="field"><b>Destination</b><span id="f-dest">—</span></div>
+  <div class="field"><b>Ref</b><span id="f-ref">—</span></div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>#</th><th>AWB</th><th>Piece</th><th>Destination</th><th>Ref</th><th>Image</th><th>Scanned At</th><th>Record Status</th><th>Image Status</th></tr>
+  </thead>
+  <tbody id="log-body"></tbody>
+</table>
+
+<script>
+// ---------------------------------------------------------------------
+// CONFIG — the widget only ever talks to our own proxy service (deployed
+// on Render). It never sees Zoho credentials; the service holds those and
+// refreshes its own access token. See /server for that service's code.
+// ---------------------------------------------------------------------
+const SERVICE = {
+  baseUrl: '', // e.g. 'https://cargo-tracker-api.onrender.com'
+};
+
+const COOLDOWN_MS = 2500; // ignore an identical decode within this window
+const lastSeen = new Map(); // rawPayload -> timestamp
+const seenPieces = new Set(); // `${awb}|${piece}` already logged this session
+let rowCount = 0;
+
+function parsePayload(raw) {
+  // Expected: AWB:xxx|PC:n/total|DEST:xxx|REF:xxx
+  const parts = Object.fromEntries(
+    raw.split('|').map(p => {
+      const idx = p.indexOf(':');
+      return [p.slice(0, idx), p.slice(idx + 1)];
+    })
+  );
+  if (!parts.AWB || !parts.PC) return null;
+  const [piece, total] = parts.PC.split('/');
+  return {
+    awb: parts.AWB,
+    piece: parseInt(piece, 10),
+    total: parseInt(total, 10),
+    dest: parts.DEST || '',
+    ref: parts.REF || '',
+    raw,
+  };
+}
+
+function isApiConfigured() {
+  return !!SERVICE.baseUrl;
+}
+
+function setModeBanner() {
+  const banner = document.getElementById('mode-banner');
+  const live = isApiConfigured();
+  banner.className = live ? 'live' : 'mock';
+  banner.textContent = live
+    ? `Calling proxy service at ${SERVICE.baseUrl} — records will be written live.`
+    : 'Standalone/mock mode — SERVICE.baseUrl is not set yet. Scans are logged locally only.';
+}
+
+// Step 1 of 2: create the Scan_Event record via our proxy (no image yet).
+async function createRecord(record) {
+  const payload = {
+    awb: record.awb,
+    piece: record.piece,
+    total: record.total,
+    dest: record.dest,
+    ref: record.ref,
+    raw: record.raw,
+    scannedAt: new Date().toISOString(),
+  };
+
+  if (!isApiConfigured()) {
+    console.log('[MOCK] would POST create-record to proxy service:', payload);
+    return { mock: true, id: 'mock-' + Date.now() };
+  }
+
+  try {
+    const resp = await fetch(`${SERVICE.baseUrl}/api/scan-events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const json = await resp.json();
+    if (!resp.ok) throw new Error(json.error || `HTTP ${resp.status}`);
+    return { id: json.id, raw: json };
+  } catch (err) {
+    console.error('Create record failed:', err);
+    return { error: err };
+  }
+}
+
+// Step 2 of 2: separate call to attach the captured image to the record
+// just created. Kept as its own request so a failed image attach never
+// blocks the record itself from being logged.
+async function attachImage(recordId, blob) {
+  if (!isApiConfigured()) {
+    console.log(`[MOCK] would PATCH image onto record ${recordId}, size=${blob?.size} bytes`);
+    return { mock: true };
+  }
+
+  const form = new FormData();
+  form.append('file', blob, `scan-${recordId}.jpg`);
+
+  try {
+    const resp = await fetch(`${SERVICE.baseUrl}/api/scan-events/${recordId}/image`, {
+      method: 'PATCH',
+      body: form,
+    });
+    const json = await resp.json();
+    if (!resp.ok) throw new Error(json.error || `HTTP ${resp.status}`);
+    return { ok: true, raw: json };
+  } catch (err) {
+    console.error('Image attach failed:', err);
+    return { error: err };
+  }
+}
+
+function captureFrame() {
+  const video = document.querySelector('#reader video');
+  if (!video || !video.videoWidth) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  return canvas; // caller pulls both a dataURL (thumbnail) and a blob (upload) from this
+}
+
+function updateProgress(awb, total) {
+  const scannedForAwb = [...seenPieces].filter(k => k.startsWith(awb + '|')).length;
+  document.getElementById('progress').textContent =
+    `AWB ${awb}: ${scannedForAwb} / ${total} pieces scanned`;
+}
+
+async function onDecoded(raw) {
+  const now = Date.now();
+  const last = lastSeen.get(raw);
+  if (last && now - last < COOLDOWN_MS) return; // debounce same frame re-reads
+  lastSeen.set(raw, now);
+
+  const record = parsePayload(raw);
+  if (!record) {
+    console.warn('Unrecognized barcode payload, ignored:', raw);
+    return;
+  }
+
+  const pieceKey = `${record.awb}|${record.piece}`;
+  const isDuplicate = seenPieces.has(pieceKey);
+  if (!isDuplicate) seenPieces.add(pieceKey);
+
+  // UI: last-scan panel
+  document.getElementById('f-awb').textContent = record.awb;
+  document.getElementById('f-piece').textContent = `${record.piece} / ${record.total}`;
+  document.getElementById('f-dest').textContent = record.dest;
+  document.getElementById('f-ref').textContent = record.ref;
+  const panel = document.getElementById('last-scan');
+  panel.classList.remove('flash');
+  void panel.offsetWidth; // restart animation
+  panel.classList.add('flash');
+
+  // beep
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    osc.frequency.value = isDuplicate ? 220 : 880;
+    osc.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.12);
+  } catch (e) { /* audio not available, ignore */ }
+
+  const canvas = captureFrame();
+  const thumbUrl = canvas ? canvas.toDataURL('image/jpeg', 0.6) : null;
+
+  rowCount++;
+  const tr = document.createElement('tr');
+  if (isDuplicate) tr.className = 'duplicate';
+  tr.innerHTML = `
+    <td>${rowCount}</td>
+    <td>${record.awb}</td>
+    <td>${record.piece}/${record.total}</td>
+    <td>${record.dest}</td>
+    <td>${record.ref}</td>
+    <td>${thumbUrl ? `<img src="${thumbUrl}" width="60">` : '—'}</td>
+    <td>${new Date().toLocaleTimeString()}</td>
+    <td class="record-status">${isDuplicate ? 'DUPLICATE' : 'creating…'}</td>
+    <td class="image-status">—</td>
+  `;
+  document.getElementById('log-body').prepend(tr);
+  updateProgress(record.awb, record.total);
+
+  // Call 1: create the record (JSON only, no image).
+  const createResult = await createRecord(record);
+  const recordStatusCell = tr.querySelector('.record-status');
+  const imageStatusCell = tr.querySelector('.image-status');
+
+  if (isDuplicate) {
+    recordStatusCell.textContent = 'DUPLICATE';
+  } else if (createResult.error || !createResult.id) {
+    recordStatusCell.textContent = 'create-failed';
+  } else {
+    recordStatusCell.textContent = createResult.mock ? 'mock-created' : `saved (ID ${createResult.id})`;
+
+    // Call 2: separate follow-up call to attach the image to that record.
+    if (canvas) {
+      imageStatusCell.textContent = 'uploading…';
+      canvas.toBlob(async (blob) => {
+        const imgResult = await attachImage(createResult.id, blob);
+        imageStatusCell.textContent = imgResult.error
+          ? 'image-failed'
+          : (imgResult.mock ? 'mock-attached' : 'image-attached');
+      }, 'image/jpeg', 0.7);
+    } else {
+      imageStatusCell.textContent = 'no-frame-captured';
+    }
+  }
+}
+
+(async () => {
+  setModeBanner();
+
+  const scanner = new Html5Qrcode('reader');
+  scanner.start(
+    { facingMode: 'environment' },
+    {
+      fps: 10,
+      qrbox: { width: 300, height: 120 },
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.QR_CODE,
+      ],
+    },
+    (decodedText) => onDecoded(decodedText),
+    () => { /* per-frame decode failure, expected while no barcode in view — ignore */ }
+  ).catch(err => {
+    document.getElementById('reader').textContent =
+      'Camera unavailable: ' + err + ' (try over https:// or localhost, and grant camera permission).';
+  });
+})();
+</script>
+</body>
+</html>
