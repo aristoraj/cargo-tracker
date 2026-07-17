@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
@@ -34,6 +35,7 @@ const FIELD_MAP = {
 const app = express();
 app.use(cors({ origin: ALLOWED_ORIGIN }));
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public'))); // serves index.html (the scanner) at '/'
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
 
 // ---------------------------------------------------------------------

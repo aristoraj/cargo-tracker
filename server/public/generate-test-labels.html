@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Test Label Generator — Cargo Prototype</title>
+<script src="https://cdn.jsdelivr.net/npm/bwip-js@4/dist/bwip-js-min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; background: #eee; margin: 0; padding: 20px; }
+  .controls { background: #fff; padding: 16px; border-radius: 8px; margin-bottom: 20px; max-width: 700px; }
+  .controls label { display: block; margin-top: 8px; font-size: 13px; color: #333; }
+  .controls input { width: 100%; padding: 6px; box-sizing: border-box; font-size: 14px; }
+  .controls button { margin-top: 14px; padding: 10px 18px; font-size: 14px; cursor: pointer; }
+  #labels { display: flex; flex-wrap: wrap; gap: 16px; }
+  .label {
+    width: 340px; background: #fff; border: 2px solid #000; padding: 10px;
+    font-family: Arial, sans-serif;
+  }
+  .label .brand { font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; }
+  .label .dest { font-size: 26px; font-weight: bold; margin: 6px 0; }
+  .label .row { font-size: 11px; color: #222; margin: 2px 0; }
+  .label canvas { width: 100%; margin-top: 6px; }
+  .label .piece { font-size: 16px; font-weight: bold; text-align: right; }
+  @media print { .controls, h1 { display: none; } }
+</style>
+</head>
+<body>
+
+<h1>Test Label Generator (Cargo Prototype)</h1>
+
+<div class="controls">
+  <label>AWB / Tracking No
+    <input id="awb" value="4062665515">
+  </label>
+  <label>Destination code (e.g. IN-COK-EKM)
+    <input id="dest" value="IN-COK-EKM">
+  </label>
+  <label>Ref / cargo doc no
+    <input id="ref" value="AFY24-0183">
+  </label>
+  <label>Total pieces
+    <input id="total" type="number" value="9" min="1" max="50">
+  </label>
+  <button onclick="generate()">Generate Labels</button>
+  <button onclick="window.print()">Print</button>
+</div>
+
+<div id="labels"></div>
+
+<script>
+function buildPayload(awb, piece, total, dest, ref) {
+  // Pipe-delimited single string encoded in ONE barcode per label —
+  // one scan is enough to recover every field. Mirrors what the
+  // real scanner-widget.html expects to parse.
+  return `AWB:${awb}|PC:${piece}/${total}|DEST:${dest}|REF:${ref}`;
+}
+
+function generate() {
+  const awb = document.getElementById('awb').value.trim();
+  const dest = document.getElementById('dest').value.trim();
+  const ref = document.getElementById('ref').value.trim();
+  const total = parseInt(document.getElementById('total').value, 10);
+
+  const container = document.getElementById('labels');
+  container.innerHTML = '';
+
+  for (let piece = 1; piece <= total; piece++) {
+    const payload = buildPayload(awb, piece, total, dest, ref);
+
+    const div = document.createElement('div');
+    div.className = 'label';
+    div.innerHTML = `
+      <div class="brand"><span>EXPRESS WORLDWIDE</span><span>WPX</span></div>
+      <div class="dest">${dest}</div>
+      <div class="row">AWB: ${awb}</div>
+      <div class="row">Ref: ${ref}</div>
+      <canvas id="bc-${piece}"></canvas>
+      <div class="piece">${piece} / ${total}</div>
+    `;
+    container.appendChild(div);
+
+    bwipjs.toCanvas(`bc-${piece}`, {
+      bcid: 'code128',
+      text: payload,
+      scale: 3,
+      height: 12,
+      includetext: true,
+      textxalign: 'center',
+    });
+  }
+}
+
+generate();
+</script>
+</body>
+</html>
