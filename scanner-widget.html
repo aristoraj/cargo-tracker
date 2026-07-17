@@ -363,13 +363,9 @@ async function onDecoded(raw) {
     { facingMode: 'environment' },
     {
       fps: 10,
-      // Responsive scan box: sized from the ACTUAL rendered viewfinder
-      // dimensions every time, instead of a fixed pixel box that stops
-      // matching reality the moment screen size or zoom changes.
-      qrbox: (viewfinderWidth, viewfinderHeight) => ({
-        width: Math.floor(viewfinderWidth * 0.85),
-        height: Math.floor(viewfinderHeight * 0.35),
-      }),
+      // No qrbox — scans the entire camera frame instead of restricting
+      // detection to a fixed rectangle. Real boxes won't always land in
+      // a marked region, so the whole frame is fair game.
       videoConstraints: {
         facingMode: 'environment',
         width: { ideal: 1920 },
