@@ -15,9 +15,9 @@ services:
       - key: ZOHO_ACCOUNT_OWNER_NAME
         sync: false
       - key: ZOHO_ACCOUNTS_DOMAIN
-        value: accounts.zoho.in
+        value: accounts.zoho.com
       - key: ZOHO_API_DOMAIN
-        value: www.zohoapis.in
+        value: www.zohoapis.com
       - key: ZOHO_APP_LINK_NAME
         value: Cargo_Tracker
       - key: ZOHO_FORM_LINK_NAME
