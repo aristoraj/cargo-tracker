@@ -21,6 +21,16 @@
   th { background: #333; color: #fff; }
   tr.duplicate { background: #f8d7da; }
   #progress { font-size: 13px; margin-top: 8px; color: #333; }
+  #scan-status {
+    font-size: 16px; font-weight: bold; text-align: center;
+    padding: 14px; border-radius: 8px; margin: 12px 0; max-width: 420px;
+    transition: background 0.25s ease;
+  }
+  #scan-status.scanning { background: #e7f1ff; color: #084298; }
+  #scan-status.processing { background: #fff3cd; color: #664d03; }
+  #scan-status.done { background: #d1e7dd; color: #0f5132; }
+  #scan-status.error { background: #f8d7da; color: #842029; }
+  #scan-status.hint { background: #ffe5d0; color: #7a3e00; }
 </style>
 </head>
 <body>
@@ -29,6 +39,7 @@
 <div id="mode-banner"></div>
 
 <div id="reader"></div>
+<div id="scan-status" class="scanning">Scanning — hold a barcode in view</div>
 <div id="progress"></div>
 
 <div id="last-scan">
@@ -47,18 +58,62 @@
 
 <script>
 // ---------------------------------------------------------------------
-// CONFIG — the widget only ever talks to our own proxy service (deployed
-// on Render). It never sees Zoho credentials; the service holds those and
-// refreshes its own access token. See /server for that service's code.
+// CONFIG — standalone/local-dev copy of server/public/index.html, pointed
+// at the live Render service (cross-origin, so ALLOWED_ORIGIN must permit
+// this). Keep this file's logic in sync with server/public/index.html.
 // ---------------------------------------------------------------------
 const SERVICE = {
-  baseUrl: '', // e.g. 'https://cargo-tracker-api.onrender.com'
+  baseUrl: 'https://cargo-tracker-ru29.onrender.com',
 };
 
 const COOLDOWN_MS = 2500; // ignore an identical decode within this window
 const lastSeen = new Map(); // rawPayload -> timestamp
 const seenPieces = new Set(); // `${awb}|${piece}` already logged this session
 let rowCount = 0;
+
+// ---------------------------------------------------------------------
+// Scan status flow: scanning -> processing -> done/error -> back to
+// scanning. While idle in "scanning" with nothing decoding, cycle
+// coaching hints — html5-qrcode only tells us decoded/not-decoded, not
+// *why* a read is failing, so this is time-based guidance, not true
+// blur/distance detection.
+// ---------------------------------------------------------------------
+const HINTS = [
+  'Hold the barcode flat and steady inside the frame',
+  'Try moving the camera a little closer to the label',
+  'Try stepping back a little — it may be too close to focus',
+  'Make sure the barcode is well lit and not blurry',
+];
+let hintIndex = 0;
+let lastActivityAt = Date.now();
+let isBusy = false; // true from the moment a code decodes until we revert to scanning
+let revertTimer = null;
+
+function setScanStatus(state, message) {
+  const el = document.getElementById('scan-status');
+  el.className = state;
+  el.textContent = message;
+}
+
+function scheduleRevertToScanning(delay = 1500) {
+  clearTimeout(revertTimer);
+  revertTimer = setTimeout(() => {
+    isBusy = false;
+    lastActivityAt = Date.now(); // fresh idle window before hints resume
+    setScanStatus('scanning', 'Scanning — hold next barcode in view');
+  }, delay);
+}
+
+setInterval(() => {
+  if (isBusy) return;
+  const idleMs = Date.now() - lastActivityAt;
+  if (idleMs > 4000) {
+    setScanStatus('hint', HINTS[hintIndex % HINTS.length]);
+    hintIndex++;
+  } else {
+    setScanStatus('scanning', 'Scanning — hold a barcode in view');
+  }
+}, 3000);
 
 function parsePayload(raw) {
   // Expected: AWB:xxx|PC:n/total|DEST:xxx|REF:xxx
@@ -168,6 +223,9 @@ function updateProgress(awb, total) {
 }
 
 async function onDecoded(raw) {
+  lastActivityAt = Date.now(); // a code decoded — stop showing "can't read" hints
+  if (isBusy) return; // already handling a scan; ignore reads until we revert to scanning
+
   const now = Date.now();
   const last = lastSeen.get(raw);
   if (last && now - last < COOLDOWN_MS) return; // debounce same frame re-reads
@@ -182,6 +240,10 @@ async function onDecoded(raw) {
   const pieceKey = `${record.awb}|${record.piece}`;
   const isDuplicate = seenPieces.has(pieceKey);
   if (!isDuplicate) seenPieces.add(pieceKey);
+
+  isBusy = true;
+  clearTimeout(revertTimer);
+  setScanStatus('processing', `Processing piece ${record.piece}/${record.total} of AWB ${record.awb}…`);
 
   // UI: last-scan panel
   document.getElementById('f-awb').textContent = record.awb;
@@ -229,10 +291,13 @@ async function onDecoded(raw) {
 
   if (isDuplicate) {
     recordStatusCell.textContent = 'DUPLICATE';
+    setScanStatus('error', `Piece ${record.piece}/${record.total} was already scanned — skipped`);
   } else if (createResult.error || !createResult.id) {
     recordStatusCell.textContent = 'create-failed';
+    setScanStatus('error', `Couldn't save piece ${record.piece}/${record.total} — will keep scanning`);
   } else {
     recordStatusCell.textContent = createResult.mock ? 'mock-created' : `saved (ID ${createResult.id})`;
+    setScanStatus('done', `✅ Piece ${record.piece}/${record.total} of AWB ${record.awb} saved — ready for next scan`);
 
     // Call 2: separate follow-up call to attach the image to that record.
     if (canvas) {
@@ -247,6 +312,8 @@ async function onDecoded(raw) {
       imageStatusCell.textContent = 'no-frame-captured';
     }
   }
+
+  scheduleRevertToScanning();
 }
 
 (async () => {
