@@ -313,9 +313,16 @@ async function onDecoded(raw) {
   const canvas = captureFrame();
   const thumbUrl = canvas ? canvas.toDataURL('image/jpeg', 0.6) : null;
 
+  if (isDuplicate) {
+    // Already scanned this piece this session — skip the API call AND
+    // skip adding it to the summary table entirely; it never reaches Zoho.
+    setScanStatus('error', `Piece ${record.piece}/${record.total} was already scanned — skipped, not sent to Zoho`);
+    scheduleRevertToScanning();
+    return;
+  }
+
   rowCount++;
   const tr = document.createElement('tr');
-  if (isDuplicate) tr.className = 'duplicate';
   tr.innerHTML = `
     <td>${rowCount}</td>
     <td>${record.awb}</td>
@@ -324,21 +331,19 @@ async function onDecoded(raw) {
     <td>${record.ref}</td>
     <td>${thumbUrl ? `<img src="${thumbUrl}" width="60">` : '—'}</td>
     <td>${new Date().toLocaleTimeString()}</td>
-    <td class="record-status">${isDuplicate ? 'DUPLICATE' : 'creating…'}</td>
+    <td class="record-status">creating…</td>
     <td class="image-status">—</td>
   `;
   document.getElementById('log-body').prepend(tr);
   updateProgress(record.awb, record.total);
 
-  // Call 1: create the record (JSON only, no image).
-  const createResult = await createRecord(record);
   const recordStatusCell = tr.querySelector('.record-status');
   const imageStatusCell = tr.querySelector('.image-status');
 
-  if (isDuplicate) {
-    recordStatusCell.textContent = 'DUPLICATE';
-    setScanStatus('error', `Piece ${record.piece}/${record.total} was already scanned — skipped`);
-  } else if (createResult.error || !createResult.id) {
+  // Call 1: create the record (JSON only, no image).
+  const createResult = await createRecord(record);
+
+  if (createResult.error || !createResult.id) {
     recordStatusCell.textContent = 'create-failed';
     setScanStatus('error', `Couldn't save piece ${record.piece}/${record.total} — will keep scanning`);
   } else {
@@ -350,7 +355,7 @@ async function onDecoded(raw) {
       imageStatusCell.textContent = 'uploading…';
       canvas.toBlob(async (blob) => {
         const imgResult = await attachImage(createResult.id, blob);
-        imageStatusCell.textContent = imgResult.error ? 'image-failed' : 'image-attached';
+        imageStatusCell.textContent = imgResult.error ? `image-failed: ${imgResult.error}` : 'image-attached';
       }, 'image/jpeg', 0.7);
     } else {
       imageStatusCell.textContent = 'no-frame-captured';

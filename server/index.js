@@ -32,6 +32,20 @@ const FIELD_MAP = {
   scannedAt: 'Scanned_On',
 };
 
+// Zoho Creator's Date-Time fields don't reliably accept a raw ISO string
+// via the Data API — instead of erroring, it tends to just leave the field
+// blank, which is why "Scanned_On" wasn't showing up. Format explicitly
+// as "DD-MMM-YYYY HH:mm:ss" in IST (this account's timezone), computed
+// directly rather than relying on the server process's own timezone
+// (Render defaults to UTC).
+function toZohoDateTime(isoString) {
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(new Date(isoString).getTime() + IST_OFFSET_MS);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(ist.getUTCDate())}-${months[ist.getUTCMonth()]}-${ist.getUTCFullYear()} ${pad(ist.getUTCHours())}:${pad(ist.getUTCMinutes())}:${pad(ist.getUTCSeconds())}`;
+}
+
 const app = express();
 app.use(cors({ origin: ALLOWED_ORIGIN }));
 app.use(express.json());
@@ -95,7 +109,7 @@ app.post('/api/scan-events', async (req, res) => {
       [FIELD_MAP.dest]: dest || '',
       [FIELD_MAP.ref]: ref || '',
       [FIELD_MAP.raw]: raw || '',
-      [FIELD_MAP.scannedAt]: scannedAt || new Date().toISOString(),
+      [FIELD_MAP.scannedAt]: toZohoDateTime(scannedAt || new Date().toISOString()),
     };
 
     const url = `https://${ZOHO_API_DOMAIN}/creator/v2.1/data/${ZOHO_ACCOUNT_OWNER_NAME}/${ZOHO_APP_LINK_NAME}/form/${ZOHO_FORM_LINK_NAME}`;
@@ -135,10 +149,20 @@ app.patch('/api/scan-events/:id/image', upload.single('file'), async (req, res) 
       headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
       body: form,
     });
-    const zohoJson = await zohoResp.json();
-    if (!zohoResp.ok) throw new Error(zohoJson.message || `HTTP ${zohoResp.status}`);
 
-    res.json({ ok: true, raw: zohoJson });
+    // Read as text first — a 401/404 from Zoho's gateway (vs. the Creator
+    // app itself) doesn't always come back as JSON, and swallowing that
+    // detail is exactly why this was hard to diagnose from the outside.
+    const rawText = await zohoResp.text();
+    let zohoJson = null;
+    try { zohoJson = JSON.parse(rawText); } catch { /* not JSON, keep rawText */ }
+
+    if (!zohoResp.ok) {
+      console.error(`image attach failed: HTTP ${zohoResp.status} url=${url} body=${rawText}`);
+      throw new Error(`HTTP ${zohoResp.status}: ${(zohoJson && zohoJson.message) || rawText.slice(0, 200)}`);
+    }
+
+    res.json({ ok: true, raw: zohoJson || rawText });
   } catch (err) {
     console.error('image attach failed:', err);
     res.status(502).json({ error: err.message });
