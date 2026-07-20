@@ -21,6 +21,11 @@
     padding: 8px 16px; font-size: 13px; font-weight: bold; border: none;
     border-radius: 6px; background: #2563eb; color: #fff;
   }
+  #topbar-buttons { display: flex; gap: 8px; }
+  #zbs-register-widget-btn {
+    padding: 8px 16px; font-size: 13px; font-weight: bold; border: 1px solid #dd9f41;
+    border-radius: 6px; background: #dd9f41; color: #fff; text-transform: uppercase;
+  }
   #mode-banner { padding: 5px 14px; font-size: 11px; flex: 0 0 auto; }
   #mode-banner.mock { background: #4a3b00; color: #ffe69c; }
   #mode-banner.live { background: #123524; color: #a3cfbb; }
@@ -72,7 +77,10 @@
 
 <div id="topbar">
   <h1>Cargo Scanner</h1>
-  <button id="summary-toggle">Summary</button>
+  <div id="topbar-buttons">
+    <button id="zbs-register-widget-btn">Register now</button>
+    <button id="summary-toggle">Summary</button>
+  </div>
 </div>
 <div id="mode-banner"></div>
 <div id="debug-line">starting camera…</div>
@@ -417,6 +425,38 @@ setInterval(updateDebugLine, 1000);
     document.getElementById('debug-line').textContent = 'scanner.start() failed: ' + err;
   });
 })();
+</script>
+
+<!-- IvyCap Day 2026 registration widget (Zoho Backstage) -->
+<link rel='stylesheet' href='https://static.zohocdn.com/backstage/v1.0/styles/ticket-widget/v1.3/register-widget.min.css'>
+<script src='https://static.zohocdn.com/backstage/v1.0/javascript/ticket-widget/v1.3/register-widget.min.js'></script>
+<script>
+  window.ZBSCheckOutWidget._createWidget({
+    eventUrl: 'https://ivycapventures.zohobackstage.in/embed/test3/buyTickets',
+    modal: true,
+    clickableElements: ['#zbs-register-widget-btn'],
+    ticketClassIdVsSelectorMap: {},
+    ticketGroupIdVsSelectorMap: {},
+    skipValidation: false,
+    widgetOptions: {
+      theme: {
+        primaryButton: { backgroundColor: '#dd9f41', textColor: '#ffffff', borderColor: '#dd9f41' },
+        eventHeader: { backgroundColor: '#dd9f41', textColor: '#ffffff' }
+      },
+      visibilityOptions: {
+        showEventHeader: true, showCheckoutProgress: true, showBSBranding: true,
+        showEventDate: true, showEventVenue: true, ticketClassIds: [], ticketItemGroupIds: []
+      },
+      redirectUrl: '', affiliate: '', promoCode: '',
+      showFillInfo: false, showRegisterModalWithInfoPage: false,
+      messageContents: {
+        'lbl.closed': 'closed', 'lbl.yet.to.start': 'yet to start', 'lbl.sales.ended': 'sales ended',
+        'lbl.unavailable': 'unavailable', 'lbl.sold.out': 'sold out', 'lbl.open': 'register now'
+      }
+    },
+    onOrderComplete: function (event) {},
+    onClose: function (event) {}
+  });
 </script>
 </body>
 </html>
