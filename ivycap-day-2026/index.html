@@ -4,94 +4,59 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IvyCap Day 2026 - Register</title>
-<style>
-  body { font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #111; color: #eee; }
-  #loading { text-align: center; }
-  #zbs-register-widget-btn { display: none; }
-  #manual-fallback {
-    margin-top: 16px; padding: 10px 20px; font-weight: bold; text-transform: uppercase;
-    background: #dd9f41; border: 1px solid #dd9f41; color: #fff; border-radius: 6px; cursor: pointer;
-  }
-</style>
 </head>
 <body>
 
-  <div id="loading">
-    <p>Opening registration…</p>
-    <!-- Shown only if the checkout modal doesn't open automatically for some reason. -->
-    <button id="manual-fallback" style="display:none;">Register now</button>
-  </div>
-
-  <!-- Hidden — the widget binds its click handler to this element; we
-       trigger that click programmatically instead of asking the visitor
-       to click it themselves. -->
-  <button id='zbs-register-widget-btn'>Register now</button>
-
-  <link rel='stylesheet' href='https://static.zohocdn.com/backstage/v1.0/styles/ticket-widget/v1.3/register-widget.min.css'>
-  <script src='https://static.zohocdn.com/backstage/v1.0/javascript/ticket-widget/v1.3/register-widget.min.js'></script>
-  <script>
-    window.ZBSCheckOutWidget._createWidget({
-      eventUrl: 'https://ivycapventures.zohobackstage.in/embed/test3/buyTickets',
-      modal: true,
-      clickableElements: ['#zbs-register-widget-btn'],
-      ticketClassIdVsSelectorMap: {},
-      ticketGroupIdVsSelectorMap: {},
-      skipValidation: false,
-      widgetOptions: {
-        theme: {
-          primaryButton: { backgroundColor: '#dd9f41', textColor: '#ffffff', borderColor: '#dd9f41' },
-          eventHeader: { backgroundColor: '#dd9f41', textColor: '#ffffff' }
-        },
-        visibilityOptions: {
-          showEventHeader: true, showCheckoutProgress: true, showBSBranding: true,
-          showEventDate: true, showEventVenue: true, ticketClassIds: [], ticketItemGroupIds: []
-        },
-        redirectUrl: '', affiliate: '', promoCode: '',
-        showFillInfo: false, showRegisterModalWithInfoPage: false,
-        messageContents: {
-          'lbl.closed': 'closed', 'lbl.yet.to.start': 'yet to start', 'lbl.sales.ended': 'sales ended',
-          'lbl.unavailable': 'unavailable', 'lbl.sold.out': 'sold out', 'lbl.open': 'register now'
-        }
-      },
-      onOrderComplete: function (event) {},
-      onClose: function (event) {
-        // If the visitor closes the modal, there's nothing left to show on
-        // this page — offer the fallback button rather than a dead page.
-        document.getElementById('loading').querySelector('p').textContent = 'Registration closed.';
-        document.getElementById('manual-fallback').style.display = 'inline-block';
-      }
-    });
-
-    // Auto-open the checkout after page load. The widget's own assets
-    // (fonts, theme icons, tracking calls) can take a few seconds to
-    // finish, so a single early click risks firing before its click
-    // handler is actually attached — retry a few times over ~4s instead
-    // of guessing one fixed delay.
-    window.addEventListener('load', () => {
-      let attempts = 0;
-      const tryClick = () => {
-        attempts++;
-        document.getElementById('zbs-register-widget-btn').click();
-        if (attempts < 8) setTimeout(tryClick, 500);
-      };
-      tryClick();
-    });
-
-    // Safety net: always reveal a real, clickable button after a few
-    // seconds regardless of whether the modal opened — no attempt to
-    // detect the modal's presence (its actual DOM/class structure isn't
-    // something we have confirmed, so guessing at a selector here would
-    // just be another unverified assumption). If the modal did open, this
-    // sits harmlessly behind it; if it didn't, this is exactly what's needed.
-    setTimeout(() => {
-      document.getElementById('loading').querySelector('p').textContent = 'Tap below if registration hasn\'t opened:';
-      document.getElementById('manual-fallback').style.display = 'inline-block';
-    }, 4000);
-
-    document.getElementById('manual-fallback').addEventListener('click', () => {
-      document.getElementById('zbs-register-widget-btn').click();
-    });
-  </script>
+	<div id='zbs-register-widget-section'></div>
+	<link rel='stylesheet' href='https://static.zohocdn.com/backstage/v1.0/styles/ticket-widget/v1.3/register-widget.min.css'>
+	<script src='https://static.zohocdn.com/backstage/v1.0/javascript/ticket-widget/v1.3/register-widget.min.js'></script>
+	<script>
+		window.ZBSCheckOutWidget._createWidget({
+			eventUrl: 'https://ivycapventures.zohobackstage.in/embed/test3/buyTickets',
+			modal: false,
+			clickableElements: [],
+			ticketClassIdVsSelectorMap: {},
+			ticketGroupIdVsSelectorMap: {},
+			skipValidation: false,
+			widgetOptions: {
+				theme: {
+					primaryButton: {
+						backgroundColor: '#dd9f41',
+						textColor: '#ffffff',
+						borderColor: '#dd9f41'
+					},
+					eventHeader: {
+						backgroundColor: '#dd9f41',
+						textColor: '#ffffff'
+					}
+				},
+				visibilityOptions: {
+					showEventHeader: true,
+					showCheckoutProgress: true,
+					showBSBranding: true,
+					showEventDate: true,
+					showEventVenue: true,
+					ticketClassIds: [],
+					ticketItemGroupIds: []
+				},
+				redirectUrl: '',
+				affiliate: '',
+				promoCode: '',
+				showFillInfo: false,
+				showRegisterModalWithInfoPage: false,
+				messageContents : {
+					'lbl.closed': 'closed',
+					'lbl.yet.to.start': 'yet to start',
+					'lbl.sales.ended': 'sales ended',
+					'lbl.unavailable': 'unavailable',
+					'lbl.sold.out': 'sold out',
+					'lbl.open': 'register now'
+				}
+			},
+			onOrderComplete: function (event) {},
+			onClose: function (event) {}
+		}, '#zbs-register-widget-section');
+	</script>
 
 </body>
 </html>
