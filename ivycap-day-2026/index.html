@@ -62,22 +62,30 @@
       }
     });
 
-    // Auto-open the checkout the moment the page loads, instead of making
-    // the visitor click a visible button first.
+    // Auto-open the checkout after page load. The widget's own assets
+    // (fonts, theme icons, tracking calls) can take a few seconds to
+    // finish, so a single early click risks firing before its click
+    // handler is actually attached — retry a few times over ~4s instead
+    // of guessing one fixed delay.
     window.addEventListener('load', () => {
-      setTimeout(() => {
+      let attempts = 0;
+      const tryClick = () => {
+        attempts++;
         document.getElementById('zbs-register-widget-btn').click();
-      }, 400);
+        if (attempts < 8) setTimeout(tryClick, 500);
+      };
+      tryClick();
     });
 
-    // Safety net: if the modal never opens (script blocked, slow network),
-    // reveal a real button after a few seconds instead of leaving a dead page.
+    // Safety net: always reveal a real, clickable button after a few
+    // seconds regardless of whether the modal opened — no attempt to
+    // detect the modal's presence (its actual DOM/class structure isn't
+    // something we have confirmed, so guessing at a selector here would
+    // just be another unverified assumption). If the modal did open, this
+    // sits harmlessly behind it; if it didn't, this is exactly what's needed.
     setTimeout(() => {
-      const modalPresent = document.querySelector('.zbs-checkout-modal, [class*="zbs-"]');
-      if (!modalPresent) {
-        document.getElementById('loading').querySelector('p').textContent = "Registration didn't open automatically.";
-        document.getElementById('manual-fallback').style.display = 'inline-block';
-      }
+      document.getElementById('loading').querySelector('p').textContent = 'Tap below if registration hasn\'t opened:';
+      document.getElementById('manual-fallback').style.display = 'inline-block';
     }, 4000);
 
     document.getElementById('manual-fallback').addEventListener('click', () => {
