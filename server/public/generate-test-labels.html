@@ -5,57 +5,67 @@
 <title>Test Label Generator — Cargo Prototype</title>
 <script src="https://cdn.jsdelivr.net/npm/bwip-js@4/dist/bwip-js-min.js"></script>
 <style>
+  @page { size: A4; margin: 8mm; }
+
   body { font-family: Arial, sans-serif; background: #ddd; margin: 0; padding: 20px; }
   .controls { background: #fff; padding: 16px; border-radius: 8px; margin-bottom: 20px; max-width: 700px; }
   .controls label { display: block; margin-top: 8px; font-size: 13px; color: #333; }
   .controls input { width: 100%; padding: 6px; box-sizing: border-box; font-size: 14px; }
   .controls button { margin-top: 14px; padding: 10px 18px; font-size: 14px; cursor: pointer; }
-  #labels { display: flex; flex-wrap: wrap; gap: 20px; }
+
+  /* 2 columns x 2 rows = 4 labels per A4 page at 100% print scale.
+     Label height still hugs its content — with only 2 per row there's
+     enough width to size everything up and stay readable. */
+  #labels { display: flex; flex-wrap: wrap; gap: 4mm; align-content: flex-start; }
 
   .label {
-    width: 336px; min-height: 528px; background: #fff; border: 2px solid #000;
-    padding: 10px; font-family: Arial, sans-serif; display: flex; flex-direction: column; gap: 7px;
+    width: 95mm; box-sizing: border-box; background: #fff; border: 2px solid #000;
+    padding: 4mm; font-family: Arial, sans-serif; display: flex; flex-direction: column; gap: 2.5mm;
+    font-size: 10px;
   }
   .label .header {
     display: flex; justify-content: space-between; align-items: flex-start;
-    border-bottom: 2px solid #000; padding-bottom: 6px;
+    border-bottom: 2px solid #000; padding-bottom: 2.5mm;
   }
-  .label .header .service { font-weight: bold; font-size: 13px; line-height: 1.2; max-width: 55%; }
-  .label .header .badges { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-  .label .header .wpx-badge { border: 2px solid #000; padding: 1px 10px; font-weight: bold; font-size: 14px; }
+  .label .header .service { font-weight: bold; font-size: 13px; line-height: 1.15; }
+  .label .header .badges { display: flex; flex-direction: column; align-items: flex-end; gap: 1.5mm; }
+  .label .header .wpx-badge { border: 2px solid #000; padding: 1px 6px; font-weight: bold; font-size: 13px; }
   .label .header .dhl-logo {
     background: #ffcc00; color: #d40511; font-weight: 900; font-style: italic;
-    font-size: 17px; padding: 2px 6px; letter-spacing: 1px;
+    font-size: 16px; padding: 1px 5px; letter-spacing: 0.5px;
   }
 
-  .label .addr-row { display: flex; gap: 8px; font-size: 9.5px; line-height: 1.35; border-bottom: 1px solid #999; padding-bottom: 6px; }
-  .label .addr-row .col { flex: 1; }
-  .label .addr-row .col b { display: block; font-size: 10px; }
+  .label .origin-line { font-size: 9.5px; color: #333; }
 
   .label .dest-bar {
-    background: #000; color: #fff; padding: 8px 10px; display: flex; align-items: center; gap: 10px;
+    background: #000; color: #fff; padding: 3mm; display: flex; align-items: center; gap: 3mm;
   }
-  .label .dest-bar .c-badge { border: 2px solid #fff; padding: 1px 7px; font-size: 15px; font-weight: bold; }
-  .label .dest-bar .dest-code { font-size: 30px; font-weight: 900; letter-spacing: 1px; flex: 1; }
+  .label .dest-bar .c-badge { border: 2px solid #fff; padding: 1px 6px; font-size: 12px; font-weight: bold; }
+  .label .dest-bar .dest-code { font-size: 23px; font-weight: 900; letter-spacing: 0.4px; flex: 1; word-break: break-word; }
 
-  .label .country-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
-  .label .country-row .country { font-weight: bold; font-size: 14px; }
+  .label .country-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+  .label .country-row .country { font-weight: bold; font-size: 13px; }
 
-  .label .consignee { font-size: 12px; font-weight: bold; line-height: 1.4; border-bottom: 1px solid #999; padding-bottom: 6px; }
+  .label .consignee { font-size: 11px; font-weight: bold; line-height: 1.3; border-bottom: 1px solid #999; padding-bottom: 2.5mm; }
 
-  .label .weight-row { display: flex; justify-content: space-between; font-size: 10px; }
-  .label .weight-row .piece-count { font-size: 22px; font-weight: 900; }
+  .label .weight-row { display: flex; justify-content: space-between; font-size: 9.5px; }
+  .label .weight-row .piece-count { font-size: 18px; font-weight: 900; }
 
-  .label .barcode-block { margin-top: auto; }
-  .label .barcode-block .ref-line { font-size: 10px; text-align: center; margin-top: 2px; }
-  .label canvas { width: 100%; }
+  .label .barcode-block { margin-top: 5mm; display: flex; flex-direction: column; align-items: center; }
+  .label .barcode-block .ref-line { font-size: 9px; text-align: center; margin-top: 1.5mm; }
+  .label canvas { width: 42mm; height: 42mm; }
 
-  @media print { .controls, h1 { display: none; } #labels { gap: 0; } .label { break-after: page; } }
+  @media print {
+    .controls, h1 { display: none; }
+    /* Let the browser pack as many labels per page as actually fit —
+       no fixed per-page count now that height is content-driven. */
+    .label { break-inside: avoid; page-break-inside: avoid; }
+  }
 </style>
 </head>
 <body>
 
-<h1>Test Label Generator (Cargo Prototype)</h1>
+<h1>Test Label Generator (Cargo Prototype) — 4-up on A4 (2x2)</h1>
 
 <div class="controls">
   <label>AWB / Waybill No
@@ -115,10 +125,7 @@ function generate() {
         </div>
       </div>
 
-      <div class="addr-row">
-        <div class="col"><b>From</b>Cargo Origin Facility<br>Origin: PVG</div>
-        <div class="col"><b>To</b>FCI OEN Connectors Ltd<br>Destination Zone</div>
-      </div>
+      <div class="origin-line">Origin: PVG &nbsp;→&nbsp; AWB ${awb}</div>
 
       <div class="dest-bar">
         <div class="c-badge">C</div>
@@ -144,13 +151,14 @@ function generate() {
     `;
     container.appendChild(div);
 
+    // QR instead of Code128 — our payload (~45+ chars combining AWB, piece,
+    // destination, ref) is long for a 1D barcode to print reliably at label
+    // size; QR handles it as a compact 2D code that's far easier to scan.
     bwipjs.toCanvas(`bc-${piece}`, {
-      bcid: 'code128',
+      bcid: 'qrcode',
       text: payload,
-      scale: 2.6,
-      height: 12,
-      includetext: true,
-      textxalign: 'center',
+      scale: 3,
+      eclevel: 'M',
     });
   }
 }
