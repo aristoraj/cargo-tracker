@@ -9,11 +9,13 @@
 
 	<!-- ===================================================================
 	     IvyCap Day 2026 — Zoho Backstage Registration Widget
-	     Paste this whole block anywhere in your website's HTML where you
-	     want the Register Now button to appear.
+	     Fix provided by Zoho support to skip straight to the info/details
+	     step: the ticket class ID is mapped directly to this button via
+	     ticketClassIdVsSelectorMap, instead of relying on the general
+	     clickableElements list.
 	     =================================================================== -->
 
-	<button id='zbs-register-widget-btn' style="padding: 12px;background: #dd9f41;border: 1px solid #dd9f41;color: #ffffff;font-weight: bold;text-transform: uppercase">Register now</button>
+	<button id='zbs-register-widget-btn' style="padding: 12px;background: #2e81d8;border: 1px solid #2e81d8;color: #ffffff;font-weight: bold;text-transform: uppercase">Register now</button>
 
 	<link rel='stylesheet' href='https://static.zohocdn.com/backstage/v1.0/styles/ticket-widget/v1.3/register-widget.min.css'>
 	<script src='https://static.zohocdn.com/backstage/v1.0/javascript/ticket-widget/v1.3/register-widget.min.js'></script>
@@ -21,8 +23,10 @@
 		window.ZBSCheckOutWidget._createWidget({
 			eventUrl: 'https://ivycapventures.zohobackstage.in/embed/test3/buyTickets',
 			modal: true,
-			clickableElements: ['#zbs-register-widget-btn'],
-			ticketClassIdVsSelectorMap: {},
+			clickableElements: [],
+			ticketClassIdVsSelectorMap: {
+				'41449000000797252': ['#zbs-register-widget-btn']
+			},
 			ticketGroupIdVsSelectorMap: {},
 			skipValidation: false,
 			widgetOptions: {
@@ -49,7 +53,7 @@
 				redirectUrl: '',
 				affiliate: '',
 				promoCode: '',
-				showFillInfo: false,
+				showFillInfo: true,
 				showRegisterModalWithInfoPage: false,
 				messageContents : {
 					'lbl.closed': 'closed',
