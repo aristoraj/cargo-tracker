@@ -72,10 +72,15 @@
 		// Auto-click the hidden button so the visitor lands straight on the
 		// checkout instead of needing to click anything themselves. Retried
 		// over ~4s since the widget's own assets can take a moment to finish
-		// attaching their click handler after this script runs.
+		// attaching their click handler after this script runs. Stops as
+		// soon as the modal is actually open (zbs-fadeInUp, the counterpart
+		// to the zbs-fadeOutDown close animation) - otherwise every retry
+		// after the handler attaches re-clicks a live button and submits
+		// another registration.
 		window.addEventListener('load', () => {
 			let attempts = 0;
 			const tryClick = () => {
+				if (document.querySelector('.zbs-fadeInUp')) return;
 				attempts++;
 				document.getElementById('zbs-register-widget-btn').click();
 				if (attempts < 8) setTimeout(tryClick, 500);
