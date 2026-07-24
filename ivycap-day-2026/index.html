@@ -7,6 +7,7 @@
 </head>
 <body>
 
+	<button id='zbs-register-widget-btn' style="padding: 12px;background: #026835;border: 1px solid #026835;color: #ffffff;font-weight: bold;text-transform: uppercase">Register now</button>
 	<div id='zbs-register-widget-section'></div>
 	<link rel='stylesheet' href='https://static.zohocdn.com/backstage/v1.0/styles/ticket-widget/v1.3/register-widget.min.css'>
 	<script src='https://static.zohocdn.com/backstage/v1.0/javascript/ticket-widget/v1.3/register-widget.min.js'></script>
@@ -15,7 +16,9 @@
 		  	eventUrl: 'https://ivycapventures.zohobackstage.in/embed/test3/buyTickets',
 		  	modal: false,
 		  	clickableElements: [],
-		  	ticketClassIdVsSelectorMap: {},
+		  	ticketClassIdVsSelectorMap: {
+				'41449000000797252': ['#zbs-register-widget-btn']
+			},
 		  	ticketGroupIdVsSelectorMap: {},
 		  	skipValidation: false,
 		  	widgetOptions: {
