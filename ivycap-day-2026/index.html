@@ -32,10 +32,9 @@ messageContents: {
 },
 onOrderComplete: function (event) {},
 onClose: function (event) {
-// If the visitor closes the modal, there's nothing left to show on
-// this page — offer the fallback button rather than a dead page.
-document.getElementById('loading').querySelector('p')?.textContent = 'Registration closed.';
-document.getElementById('manual-fallback')?.style?.display = 'inline-block';
+// If the visitor closes the modal without completing registration,
+// make sure the button stays visible so there's a way to retry.
+document.getElementById('zbs-register-widget-btn').style.display = 'inline-block';
 }
 });
 </script>
