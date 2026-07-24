@@ -6,7 +6,7 @@
 <title>IvyCap Day 2026 - Register</title>
 <style>
   body { font-family: Arial, sans-serif; }
-  #zbs-register-widget-btn { display: none; }
+  #zbs-register-widget-btn-1 { display: none; }
 </style>
 </head>
 <body>
@@ -52,6 +52,15 @@ onClose: function (event) {
 //document.getElementById('loading').querySelector('p')?.textContent = 'Registration closed.';
 //document.getElementById('manual-fallback')?.style?.display = 'inline-block';
 }
+});
+
+// Auto-click the hidden button once so the visitor lands straight on
+// the checkout instead of needing to click anything themselves. Only
+// clicks once (not a retry loop) - retrying after the widget's handler
+// has already attached re-triggers registration and duplicates the
+// submitted data.
+window.addEventListener('load', () => {
+	setTimeout(() => document.getElementById('zbs-register-widget-btn-1').click(), 500);
 });
 </script>
 
