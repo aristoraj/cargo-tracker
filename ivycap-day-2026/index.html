@@ -6,17 +6,15 @@
 <title>IvyCap Day 2026 - Register</title>
 <style>
   body { font-family: Arial, sans-serif; }
-  #zbs-register-widget-btn-1 { display: none; }
+  #zbs-register-widget-btn { display: none; }
 </style>
 </head>
 <body>
 
-	<!-- Fix from Zoho support to skip straight to the info/details step:
-	     the ticket class ID is mapped directly to this button via
-	     ticketClassIdVsSelectorMap, instead of the general clickableElements
-	     list or a plain inline embed. Hidden and auto-clicked below so the
-	     visitor never has to click it themselves. -->
-	<button id='zbs-register-widget-btn-1' style="padding: 12px;background: #026835;border: 1px solid #026835;color: #ffffff;font-weight: bold;text-transform: uppercase">Register now</button>
+	<!-- Hidden — the widget binds its click handler to this element; we
+	     trigger that click programmatically instead of asking the visitor
+	     to click it themselves. -->
+	<button id='zbs-register-widget-btn' style="padding: 12px;background: #026835;border: 1px solid #026835;color: #ffffff;font-weight: bold;text-transform: uppercase">Register now</button>
 <link rel='stylesheet' href=' https://static.zohocdn.com/backstage/v1.0/styles/ticket-widget/v1.3/register-widget.min.css'>
 <script src=' https://static.zohocdn.com/backstage/v1.0/javascript/ticket-widget/v1.3/register-widget.min.js'></script>
 <script>
@@ -25,7 +23,7 @@ eventUrl: 'https://ivycapventures.zohobackstage.in/embed/IvyCapDay2026/buyTicket
 modal: true,
 clickableElements: [],
 ticketClassIdVsSelectorMap: {
-'41449000000684501': ['#zbs-register-widget-btn-1']
+'41449000000684501': ['#zbs-register-widget-btn']
 },
 ticketGroupIdVsSelectorMap: {},
 skipValidation: false,
@@ -47,10 +45,10 @@ messageContents: {
 },
 onOrderComplete: function (event) {},
 onClose: function (event) {
-// If the visitor closes the modal, there's nothing left to show on
-// this page — offer the fallback button rather than a dead page.
-//document.getElementById('loading').querySelector('p')?.textContent = 'Registration closed.';
-//document.getElementById('manual-fallback')?.style?.display = 'inline-block';
+// If the visitor closes the modal without completing registration,
+// unhide the button itself so there's a way to retry rather than a
+// dead page (it's hidden by default since it's auto-clicked below).
+document.getElementById('zbs-register-widget-btn').style.display = 'inline-block';
 }
 });
 
@@ -60,7 +58,7 @@ onClose: function (event) {
 // has already attached re-triggers registration and duplicates the
 // submitted data.
 window.addEventListener('load', () => {
-	setTimeout(() => document.getElementById('zbs-register-widget-btn-1').click(), 500);
+	setTimeout(() => document.getElementById('zbs-register-widget-btn').click(), 500);
 });
 </script>
 
