@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IvyCap Day 2026 - Register</title>
+<style>
+  #zbs-register-widget-btn { display: none; }
+</style>
 </head>
 <body>
 
@@ -59,6 +62,14 @@
 		  	onOrderComplete: function (event) {},
 		  	onClose: function (event) {}
 		} , '#zbs-register-widget-section');
+
+		// Auto-click the hidden button once so the visitor lands straight
+		// on the ticket without needing to click anything themselves.
+		// Single click only (not a retry loop) to avoid duplicate
+		// registrations from re-clicking after the handler attaches.
+		window.addEventListener('load', () => {
+			setTimeout(() => document.getElementById('zbs-register-widget-btn').click(), 500);
+		});
 	</script>
 
 </body>
