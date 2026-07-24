@@ -4,36 +4,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IvyCap Day 2026 - Register</title>
+<style>
+  body { font-family: Arial, sans-serif; }
+  #zbs-register-widget-btn { display: none; }
+</style>
 </head>
 <body>
 
-	<div id='zbs-register-widget-section'></div>
+	<!-- Fix from Zoho support to skip straight to the info/details step:
+	     the ticket class ID is mapped directly to this button via
+	     ticketClassIdVsSelectorMap, instead of the general clickableElements
+	     list or a plain inline embed. Hidden and auto-clicked below so the
+	     visitor never has to click it themselves. -->
+	<button id='zbs-register-widget-btn' style="padding: 12px;background: #2e81d8;border: 1px solid #2e81d8;color: #ffffff;font-weight: bold;text-transform: uppercase">Register now</button>
+
 	<link rel='stylesheet' href='https://static.zohocdn.com/backstage/v1.0/styles/ticket-widget/v1.3/register-widget.min.css'>
 	<script src='https://static.zohocdn.com/backstage/v1.0/javascript/ticket-widget/v1.3/register-widget.min.js'></script>
 	<script>
 		window.ZBSCheckOutWidget._createWidget({
-		  	eventUrl: 'https://ivycapventures.zohobackstage.in/embed/test3/buyTickets',
-		  	modal: false,
-		  	clickableElements: [],
-		  	ticketClassIdVsSelectorMap: {},
-		  	ticketGroupIdVsSelectorMap: {},
-		  	skipValidation: false,
-		  	widgetOptions: {
+			eventUrl: 'https://ivycapventures.zohobackstage.in/embed/IvyCapDay2026/buyTickets',
+			modal: true,
+			clickableElements: [],
+			ticketClassIdVsSelectorMap: {
+				'41449000000684504': ['#zbs-register-widget-btn']
+			},
+			ticketGroupIdVsSelectorMap: {},
+			skipValidation: false,
+			widgetOptions: {
 				theme: {
 					primaryButton: {
-						backgroundColor: '#026835',
+						backgroundColor: '#dd9f41',
 						textColor: '#ffffff',
-						borderColor: '#026835'
+						borderColor: '#dd9f41'
 					},
 					eventHeader: {
-						backgroundColor: '#026835',
+						backgroundColor: '#dd9f41',
 						textColor: '#ffffff'
 					}
 				},
 				visibilityOptions: {
-					showEventHeader: false,
-					showCheckoutProgress: false,
-					showBSBranding: false,
+					showEventHeader: true,
+					showCheckoutProgress: true,
+					showBSBranding: true,
 					showEventDate: true,
 					showEventVenue: true,
 					ticketClassIds: [],
@@ -42,7 +54,7 @@
 				redirectUrl: '',
 				affiliate: '',
 				promoCode: '',
-				showFillInfo: false,
+				showFillInfo: true,
 				showRegisterModalWithInfoPage: false,
 				messageContents : {
 					'lbl.closed': 'closed',
@@ -52,10 +64,29 @@
 					'lbl.sold.out': 'sold out',
 					'lbl.open': 'register now'
 				}
-		  	},
-		  	onOrderComplete: function (event) {},
-		  	onClose: function (event) {}
-		} , '#zbs-register-widget-section');
+			},
+			onOrderComplete: function (event) {},
+			onClose: function (event) {}
+		});
+
+		// Auto-click the hidden button so the visitor lands straight on the
+		// checkout instead of needing to click anything themselves. Retried
+		// over ~4s since the widget's own assets can take a moment to finish
+		// attaching their click handler after this script runs. Stops as
+		// soon as the modal is actually open (zbs-fadeInUp, the counterpart
+		// to the zbs-fadeOutDown close animation) - otherwise every retry
+		// after the handler attaches re-clicks a live button and submits
+		// another registration.
+		window.addEventListener('load', () => {
+			let attempts = 0;
+			const tryClick = () => {
+				if (document.querySelector('.zbs-fadeInUp')) return;
+				attempts++;
+				document.getElementById('zbs-register-widget-btn').click();
+				if (attempts < 8) setTimeout(tryClick, 500);
+			};
+			tryClick();
+		});
 	</script>
 
 </body>
