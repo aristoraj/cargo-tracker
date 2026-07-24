@@ -10,30 +10,29 @@
 </style>
 </head>
 <body>
-
-	<!-- Hidden — the widget binds its click handler to this element; we
-	     trigger that click programmatically instead of asking the visitor
-	     to click it themselves. -->
-	<button id='zbs-register-widget-btn' style="padding: 12px;background: #026835;border: 1px solid #026835;color: #ffffff;font-weight: bold;text-transform: uppercase">Register now</button>
+<!-- Hidden — the widget binds its click handler to this element; we
+   trigger that click programmatically instead of asking the visitor
+   to click it themselves. -->
+<button id='zbs-register-widget-btn' style="padding: 12px;background: #2e81d8;border: 1px solid #2e81d8;color: #ffffff;font-weight: bold;text-transform: uppercase">Register now</button>
 <link rel='stylesheet' href=' https://static.zohocdn.com/backstage/v1.0/styles/ticket-widget/v1.3/register-widget.min.css'>
 <script src=' https://static.zohocdn.com/backstage/v1.0/javascript/ticket-widget/v1.3/register-widget.min.js'></script>
 <script>
 window.ZBSCheckOutWidget._createWidget({
-eventUrl: 'https://ivycapventures.zohobackstage.in/embed/IvyCapDay2026/buyTickets',
+eventUrl: 'https://ivycapventures.zohobackstage.in/embed/test3/buyTickets',
 modal: true,
 clickableElements: [],
 ticketClassIdVsSelectorMap: {
-'41449000000684501': ['#zbs-register-widget-btn']
+'41449000000797252': ['#zbs-register-widget-btn']
 },
 ticketGroupIdVsSelectorMap: {},
 skipValidation: false,
 widgetOptions: {
 theme: {
-primaryButton: { backgroundColor: '#026835', textColor: '#ffffff', borderColor: '#026835' },
-eventHeader: { backgroundColor: '#026835', textColor: '#ffffff' }
+primaryButton: { backgroundColor: '#dd9f41', textColor: '#ffffff', borderColor: '#dd9f41' },
+eventHeader: { backgroundColor: '#dd9f41', textColor: '#ffffff' }
 },
 visibilityOptions: {
-showEventHeader: true, showCheckoutProgress: false, showBSBranding: false,
+showEventHeader: true, showCheckoutProgress: true, showBSBranding: true,
 showEventDate: true, showEventVenue: true, ticketClassIds: [], ticketItemGroupIds: []
 },
 redirectUrl: '', affiliate: '', promoCode: '',
@@ -45,20 +44,11 @@ messageContents: {
 },
 onOrderComplete: function (event) {},
 onClose: function (event) {
-// If the visitor closes the modal without completing registration,
-// unhide the button itself so there's a way to retry rather than a
-// dead page (it's hidden by default since it's auto-clicked below).
-document.getElementById('zbs-register-widget-btn').style.display = 'inline-block';
+// If the visitor closes the modal, there's nothing left to show on
+// this page — offer the fallback button rather than a dead page.
+document.getElementById('loading').querySelector('p')?.textContent = 'Registration closed.';
+document.getElementById('manual-fallback')?.style?.display = 'inline-block';
 }
-});
-
-// Auto-click the hidden button once so the visitor lands straight on
-// the checkout instead of needing to click anything themselves. Only
-// clicks once (not a retry loop) - retrying after the widget's handler
-// has already attached re-triggers registration and duplicates the
-// submitted data.
-window.addEventListener('load', () => {
-	setTimeout(() => document.getElementById('zbs-register-widget-btn').click(), 500);
 });
 </script>
 
